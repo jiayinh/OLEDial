@@ -8,7 +8,7 @@ APP="build/OLEDial.app"
 rm -rf build && mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 for ARCH in arm64 x86_64; do
-  echo "▸ Compiling $ARCH…"
+  echo "▸ Compiling ${ARCH}…"
   swiftc -O -parse-as-library -swift-version 5 \
     -target "$ARCH-apple-macos14.0" \
     Sources/*.swift \
