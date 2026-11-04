@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key><string>OLEDial</string>
+    <key>CFBundleDisplayName</key><string>OLEDial</string>
+    <key>CFBundleIdentifier</key><string>com.local.OLEDial</string>
+    <key>CFBundleExecutable</key><string>OLEDial</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>1.0.0</string>
+    <key>CFBundleVersion</key><string>1</string>
+    <key>LSMinimumSystemVersion</key><string>14.0</string>
+    <key>LSUIElement</key><true/>
+    <key>NSHighResolutionCapable</key><true/>
+    <key>LGTVRepositoryURL</key><string></string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>OLEDial connects to your LG TV on the local network to change its volume and brightness.</string>
+</dict>
+</plist>
