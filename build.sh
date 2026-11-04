@@ -18,6 +18,7 @@ lipo -create build/OLEDial-arm64 build/OLEDial-x86_64 -output "$APP/Contents/Mac
 rm build/OLEDial-arm64 build/OLEDial-x86_64
 
 cp Info.plist "$APP/Contents/Info.plist"
+cp Resources/* "$APP/Contents/Resources/"
 if [[ -n "${BUILD_NUMBER:-}" ]]; then
   /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$APP/Contents/Info.plist"
 fi

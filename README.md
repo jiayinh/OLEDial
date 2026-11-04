@@ -1,3 +1,5 @@
+<p align="center"><img src="Design/AppIcon-1024.png" width="160" alt="OLEDial icon"></p>
+
 # OLEDial
 
 *A dial for your LG OLED, right in the macOS menu bar.*
@@ -47,7 +49,7 @@ codesign --force --deep --sign - /Applications/OLEDial.app
 > **Why is it not notarized?** Notarization needs a paid Apple Developer account. If you prefer not to trust a downloaded binary, [build it yourself](#build-locally). An app you build locally has no quarantine flag, so it opens without any of the steps above.
 
 ## First run
-1. Click the TV icon in the menu bar. Click **Find TVs on network**, or enter the TV's IP address, then click **Pair**. Accept the prompt on the TV.
+1. Click the OLEDial icon (a dial around a small TV) in the menu bar. Click **Find TVs on network**, or enter the TV's IP address, then click **Pair**. Accept the prompt on the TV.
 2. Allow **Local Network** access when macOS asks.
 3. For keyboard keys, open Settings › Keyboard › **Grant Access…** and enable *OLEDial* under Privacy & Security › **Accessibility**.
 4. If the TV isn't auto-detected as a display, choose it under Settings › General › **TV display**.
@@ -75,3 +77,6 @@ Protocol details were cross-checked against the open-source aiowebostv (Home Ass
 - **Brightness slider missing:** some picture modes and Energy Saving settings lock OLED brightness. *Unverified:* this varies by model and firmware.
 - **Keys still change the Mac:** check that Accessibility is granted, that the right TV display is selected, and that the pointer is on the TV.
 - **Volume does nothing:** if the TV's audio goes to a soundbar over optical, or over ARC without CEC volume control, the TV may not control its volume.
+
+## Icon
+The icon's glowing ring is both a volume/brightness dial and the "O" of OLEDial, wrapped around a TV with a pure-black (OLED) screen. Sources are in `Design/`. Run `python3 Design/make_icons.py` (needs `rsvg-convert` and Pillow) to regenerate `Resources/AppIcon.icns` and the menu bar glyphs.

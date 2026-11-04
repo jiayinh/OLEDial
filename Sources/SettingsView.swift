@@ -155,14 +155,13 @@ struct KeyboardSettings: View {
 struct AboutSettings: View {
     var body: some View {
         VStack(spacing: 14) {
-            Image(systemName: "tv.fill")
-                .font(.system(size: 34, weight: .semibold))
-                .foregroundStyle(Color.accentColor)
-                .frame(width: 76, height: 76)
-                .glassCircle(tint: Color.accentColor.opacity(0.2))
+            Image(nsImage: AppInfo.appIcon)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 112, height: 112)
             Text("OLEDial").font(.system(.title2, design: .rounded).weight(.bold))
             Text("Version \(AppInfo.version) (\(AppInfo.build))").foregroundStyle(.secondary)
-            Text("Controls LG webOS TVs over your local network.\nProtocol details based on the open-source aiowebostv and bscpylgtv projects.")
+            Text("A dial for your LG OLED — volume and brightness from the menu bar.\nProtocol details based on the open-source aiowebostv and bscpylgtv projects.")
                 .multilineTextAlignment(.center)
                 .font(.callout)
                 .foregroundStyle(.secondary)

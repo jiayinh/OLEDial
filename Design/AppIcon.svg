@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b2f3a"/><stop offset="1" stop-color="#090a0d"/></linearGradient>
+  <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".20"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <linearGradient id="dial" gradientUnits="userSpaceOnUse" x1="262" y1="762" x2="762" y2="262">
+    <stop offset="0" stop-color="#ff2e7e"/><stop offset=".55" stop-color="#ff8a3d"/><stop offset="1" stop-color="#ffd84a"/></linearGradient>
+  <filter id="sh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000" flood-opacity=".35"/></filter>
+  <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="16"/></filter>
+</defs>
+<rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)" filter="url(#sh)"/>
+<rect x="101.5" y="101.5" width="821" height="821" rx="183.5" fill="none" stroke="url(#sheen)" stroke-width="3"/>
+<path d="M335.22 688.78 A250 250 0 1 1 688.78 688.78" fill="none" stroke="#262a33" stroke-width="56" stroke-linecap="round"/>
+<path d="M335.22 688.78 A250 250 0 1 1 727.19 384.74" fill="none" stroke="url(#dial)" stroke-width="56" stroke-linecap="round" filter="url(#glow)" opacity=".75"/>
+<path d="M335.22 688.78 A250 250 0 1 1 727.19 384.74" fill="none" stroke="url(#dial)" stroke-width="56" stroke-linecap="round"/>
+<circle cx="727.19" cy="384.74" r="34.7" fill="#fff"/>
+<rect x="398" y="448" width="228" height="128" rx="18" fill="#000" stroke="#e9ecf3" stroke-width="14"/>
+<path d="M424 588 L416 610 M600 588 L608 610" stroke="#e9ecf3" stroke-width="14" stroke-linecap="round"/>
+</svg>

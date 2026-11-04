@@ -10,7 +10,7 @@ struct OLEDialApp: App {
             MenuView()
                 .environmentObject(tv)
         } label: {
-            Image(systemName: tv.isConnected ? "tv.fill" : "tv")
+            Image(nsImage: AppInfo.menuBarIcon(connected: tv.isConnected))
         }
         .menuBarExtraStyle(.window)
     }
@@ -41,6 +41,19 @@ final class SettingsWindowController {
 }
 
 enum AppInfo {
+    /// Monochrome template glyph for the menu bar (dial + TV); falls back to an SF Symbol.
+    static func menuBarIcon(connected: Bool) -> NSImage {
+        let name = connected ? "MenuBarIcon" : "MenuBarIconOff"
+        let image = (Bundle.main.image(forResource: name)?.copy() as? NSImage)
+            ?? NSImage(systemSymbolName: connected ? "tv.fill" : "tv", accessibilityDescription: "OLEDial")
+            ?? NSImage()
+        image.isTemplate = true
+        image.size = NSSize(width: 18, height: 18)
+        return image
+    }
+
+    static var appIcon: NSImage { NSApplication.shared.applicationIconImage }
+
     static var version: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
     }

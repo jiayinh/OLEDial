@@ -33,11 +33,12 @@ struct MenuView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            Image(systemName: tv.isConnected ? "tv.fill" : "tv")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(tv.isConnected ? Color.accentColor : Color.secondary)
-                .frame(width: 38, height: 38)
-                .glassCircle(tint: tv.isConnected ? Color.accentColor.opacity(0.25) : nil)
+            Image(nsImage: AppInfo.appIcon)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 40, height: 40)
+                .saturation(tv.isConnected ? 1 : 0)
+                .opacity(tv.isConnected ? 1 : 0.7)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("LG TV").font(.system(.headline, design: .rounded))

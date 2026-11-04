@@ -6,13 +6,14 @@
     <key>CFBundleDisplayName</key><string>OLEDial</string>
     <key>CFBundleIdentifier</key><string>com.local.OLEDial</string>
     <key>CFBundleExecutable</key><string>OLEDial</string>
+    <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>1.0.0</string>
     <key>CFBundleVersion</key><string>1</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>LSUIElement</key><true/>
     <key>NSHighResolutionCapable</key><true/>
-    <key>LGTVRepositoryURL</key><string></string>
+    <key>LGTVRepositoryURL</key><string>https://github.com/jiayinh/OLEDial</string>
     <key>NSLocalNetworkUsageDescription</key>
     <string>OLEDial connects to your LG TV on the local network to change its volume and brightness.</string>
 </dict>
