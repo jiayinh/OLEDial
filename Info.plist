@@ -4,7 +4,7 @@
 <dict>
     <key>CFBundleName</key><string>OLEDial</string>
     <key>CFBundleDisplayName</key><string>OLEDial</string>
-    <key>CFBundleIdentifier</key><string>com.local.OLEDial</string>
+    <key>CFBundleIdentifier</key><string>io.github.jiayinh.OLEDial</string>
     <key>CFBundleExecutable</key><string>OLEDial</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundlePackageType</key><string>APPL</string>
