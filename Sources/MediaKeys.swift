@@ -1,8 +1,11 @@
 import AppKit
 import ApplicationServices
 
-/// Keyboard media keys (volume / brightness / mute), delivered by macOS as
-/// NX_SYSDEFINED events (type 14, subtype 8 = NX_SUBTYPE_AUX_CONTROL_BUTTONS).
+/// Keyboard media keys (volume / brightness / mute). macOS delivers most of them as
+/// NX_SYSDEFINED events (type 14, subtype 8 = NX_SUBTYPE_AUX_CONTROL_BUTTONS), but on
+/// Apple keyboards attached to Apple Silicon Macs the brightness keys (F1/F2) arrive as
+/// ordinary keyDown/keyUp events with key codes 144 (up) / 145 (down) - see MonitorControl's
+/// MediaKeyTap `functionKeyCodeToMediaKey`. We handle both paths.
 enum MediaKey: Int {
     case soundUp = 0          // NX_KEYTYPE_SOUND_UP
     case soundDown = 1        // NX_KEYTYPE_SOUND_DOWN
@@ -37,6 +40,8 @@ final class MediaKeyTap {
         if tap != nil { return true }
         guard Self.isTrusted else { return false }
         let mask = CGEventMask(1 << 14) // NX_SYSDEFINED
+            | CGEventMask(1 << CGEventType.keyDown.rawValue)
+            | CGEventMask(1 << CGEventType.keyUp.rawValue)
         let refcon = Unmanaged.passUnretained(self).toOpaque()
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
@@ -71,6 +76,24 @@ final class MediaKeyTap {
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
             return Unmanaged.passUnretained(event)
         }
+        // Brightness keys sent as plain key events (key codes 144 / 145).
+        if type == .keyDown || type == .keyUp {
+            let code = event.getIntegerValueField(.keyboardEventKeycode)
+            let key: MediaKey
+            switch code {
+            case 144: key = .brightnessUp
+            case 145: key = .brightnessDown
+            default: return Unmanaged.passUnretained(event)
+            }
+            let intercept = MainActor.assumeIsolated { shouldIntercept?(key) ?? false }
+            guard intercept else { return Unmanaged.passUnretained(event) }
+            if type == .keyDown {
+                let flags = NSEvent(cgEvent: event)?.modifierFlags ?? []
+                MainActor.assumeIsolated { onKey?(key, flags) }
+            }
+            return nil
+        }
+
         guard type.rawValue == 14,
               let ns = NSEvent(cgEvent: event),
               ns.subtype.rawValue == 8 else {
