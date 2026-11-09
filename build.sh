@@ -26,8 +26,22 @@ if [[ -n "${APP_VERSION:-}" ]]; then
   /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $APP_VERSION" "$APP/Contents/Info.plist"
 fi
 
-codesign --force --deep --sign - "$APP"   # ad-hoc signature
+# Signing: CI passes SIGN_IDENTITY (SHA-1 of a stable self-signed certificate) so the
+# app keeps the same identity across builds and macOS keeps its Accessibility permission.
+# Without it (local builds, forks) the app is signed ad-hoc.
+SIGN_IDENTITY="${SIGN_IDENTITY:--}"
+if [[ "$SIGN_IDENTITY" == "-" ]]; then
+  echo "▸ Signing ad-hoc"
+else
+  echo "▸ Signing with certificate $SIGN_IDENTITY"
+fi
+codesign --force --deep --timestamp=none \
+  --identifier "io.github.jiayinh.OLEDial" \
+  ${SIGN_KEYCHAIN:+--keychain "$SIGN_KEYCHAIN"} \
+  --sign "$SIGN_IDENTITY" "$APP"
 codesign --verify --verbose "$APP"
+codesign --display --requirements - "$APP" 2>&1 | sed 's/^/  /'
+
 
 echo
 echo "Built: $PWD/$APP"

@@ -23,6 +23,36 @@ jobs:
           xcodebuild -version
           swift --version
 
+      # Imports the stable self-signed signing certificate (repo secrets
+      # SIGNING_CERT_P12 = base64 .p12, SIGNING_CERT_PASSWORD). Skipped if the secrets
+      # aren't set (e.g. pull requests from forks); the build then falls back to ad-hoc.
+      - name: Import signing certificate
+        env:
+          P12_BASE64: ${{ secrets.SIGNING_CERT_P12 }}
+          P12_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}
+        run: |
+          if [ -z "$P12_BASE64" ]; then
+            echo "No signing certificate secret; building ad-hoc."
+            exit 0
+          fi
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 16)"
+          echo "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          # Trust the self-signed cert for code signing on this runner only.
+          security find-certificate -c "OLEDial Self-Signed" -p "$KEYCHAIN" > "$RUNNER_TEMP/cert.pem"
+          sudo security add-trusted-cert -d -r trustRoot -p codeSign -k /Library/Keychains/System.keychain "$RUNNER_TEMP/cert.pem"
+          SHA1=$(security find-certificate -c "OLEDial Self-Signed" -Z "$KEYCHAIN" | awk '/SHA-1/{print $NF}')
+          echo "Using certificate $SHA1"
+          echo "SIGN_IDENTITY=$SHA1" >> "$GITHUB_ENV"
+          echo "SIGN_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+          rm -f "$RUNNER_TEMP/cert.p12"
+
       - name: Build
         env:
           BUILD_NUMBER: ${{ github.run_number }}

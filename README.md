@@ -36,7 +36,7 @@ xattr -dr com.apple.quarantine /Applications/OLEDial.app
 open /Applications/OLEDial.app
 ```
 
-If it still won't launch, run this, then repeat the commands above:
+If it still won't launch, run this, then repeat the commands above. (This replaces the signature, so you'll also need to re-grant Accessibility as described in [Updating](#updating).)
 ```bash
 codesign --force --deep --sign - /Applications/OLEDial.app
 ```
@@ -50,11 +50,14 @@ codesign --force --deep --sign - /Applications/OLEDial.app
 
 ## Updating
 
-After installing a new version, macOS treats it as a new app for Accessibility. In System Settings › Privacy & Security › Accessibility, select OLEDial, click **−** to remove it, then turn it on again via Settings › Keyboard › **Grant Access…**. You may also need to repeat the [Installing](#installing) steps.
+Starting with **v1.0.1**, every release is signed with the same certificate, so macOS keeps OLEDial's Accessibility permission when you install a new version.
+
+- **Coming from v1.0.0 or an earlier build:** the signature changes once. In System Settings › Privacy & Security › Accessibility, select OLEDial, click **−** to remove it, then turn it on again via Settings › Keyboard › **Grant Access…**.
+- Each new download may still need the [Installing](#installing) steps, because OLEDial isn't notarized.
 
 ## Troubleshooting
 
-- **Media keys stopped working after an update:** see [Updating](#updating).
+- **Media keys stopped working after an update:** Settings › Keyboard shows what is wrong. Usually the fix is to remove OLEDial from Accessibility and add it again (see [Updating](#updating)).
 - **Keys still change the Mac's volume:** check that Accessibility is granted, the right TV display is selected, and the pointer is on the TV's screen.
 - **Can't connect while the TV is off:** on the TV, turn on *TV On With Mobile* / *Wake on LAN* (usually Settings › General › Devices › External Devices; the path varies by model).
 - **Brightness slider missing:** some picture modes and Energy Saving settings lock OLED brightness. This varies by model and firmware.
