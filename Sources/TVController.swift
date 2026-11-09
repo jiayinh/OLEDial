@@ -19,6 +19,15 @@ enum MediaKeyMode: String, CaseIterable, Identifiable {
     }
 }
 
+/// Whether the keyboard's media keys are being captured.
+enum MediaKeyStatus: Equatable {
+    case off              // user turned the feature off
+    case needsPermission  // Accessibility not granted
+    case blocked          // granted, but macOS refused the event tap (stale permission after an update)
+    case volumeOnly       // tap running, but without keyDown events (brightness keys 144/145 not seen)
+    case active
+}
+
 /// App state + TV control logic. Owns the WebOSClient.
 @MainActor
 final class TVController: ObservableObject {
@@ -55,6 +64,7 @@ final class TVController: ObservableObject {
         didSet { defaults.set(showHUD, forKey: Keys.showHUD) }
     }
     @Published private(set) var accessibilityTrusted = MediaKeyTap.isTrusted
+    @Published private(set) var mediaKeyStatus: MediaKeyStatus = .off
     @Published private(set) var launchAtLogin: Bool = false
 
     var volumeEditing = false
@@ -63,7 +73,7 @@ final class TVController: ObservableObject {
     private var client: WebOSClient?
     private let defaults = UserDefaults.standard
     private var reconnectTask: Task<Void, Never>?
-    private var trustPollTask: Task<Void, Never>?
+    private var mediaKeyRetryTask: Task<Void, Never>?
     private var userWantsConnection = false
     private let mediaKeys = MediaKeyTap()
 
@@ -451,29 +461,48 @@ final class TVController: ObservableObject {
         accessibilityTrusted = MediaKeyTap.isTrusted
         if mediaKeyMode == .off {
             mediaKeys.stop()
+            mediaKeyRetryTask?.cancel()
+            mediaKeyRetryTask = nil
+            mediaKeyStatus = .off
             return
         }
-        if !mediaKeys.start() { pollForAccessibilityTrust() }
+        if accessibilityTrusted { mediaKeys.start() }
+        refreshMediaKeyStatus()
+        if !mediaKeys.isRunning { startMediaKeyRetry() }
+    }
+
+    private func refreshMediaKeyStatus() {
+        accessibilityTrusted = MediaKeyTap.isTrusted
+        if mediaKeyMode == .off { mediaKeyStatus = .off }
+        else if mediaKeys.isRunning { mediaKeyStatus = mediaKeys.capturesKeyEvents ? .active : .volumeOnly }
+        else if !accessibilityTrusted { mediaKeyStatus = .needsPermission }
+        else { mediaKeyStatus = .blocked }
+    }
+
+    /// Keeps trying to install the tap (e.g. while the user grants or re-grants permission).
+    private func startMediaKeyRetry() {
+        guard mediaKeyRetryTask == nil else { return }
+        mediaKeyRetryTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                guard let self else { return }
+                if self.mediaKeyMode == .off { break }
+                if MediaKeyTap.isTrusted { self.mediaKeys.start() }
+                self.refreshMediaKeyStatus()
+                if self.mediaKeys.isRunning { break }
+            }
+            self?.mediaKeyRetryTask = nil
+        }
     }
 
     func requestAccessibility() {
         MediaKeyTap.requestTrust()
-        pollForAccessibilityTrust()
+        startMediaKeyRetry()
     }
 
-    private func pollForAccessibilityTrust() {
-        guard trustPollTask == nil else { return }
-        trustPollTask = Task { [weak self] in
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
-                guard let self else { return }
-                if MediaKeyTap.isTrusted {
-                    self.accessibilityTrusted = true
-                    self.trustPollTask = nil
-                    if self.mediaKeyMode != .off { self.mediaKeys.start() }
-                    return
-                }
-            }
+    func openPrivacySettings(_ pane: String) {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(pane)") {
+            NSWorkspace.shared.open(url)
         }
     }
 

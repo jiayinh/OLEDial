@@ -35,15 +35,34 @@ final class MediaKeyTap {
         _ = AXIsProcessTrustedWithOptions([key: true] as CFDictionary)
     }
 
+    /// True when the tap also receives keyDown/keyUp (needed for brightness key codes 144/145).
+    private(set) var capturesKeyEvents = false
+
+    /// Installs the tap. Tries NX_SYSDEFINED + keyDown/keyUp first; if macOS refuses that,
+    /// falls back to NX_SYSDEFINED only so the volume/mute keys keep working.
     @discardableResult
     func start() -> Bool {
         if tap != nil { return true }
         guard Self.isTrusted else { return false }
-        let mask = CGEventMask(1 << 14) // NX_SYSDEFINED
-            | CGEventMask(1 << CGEventType.keyDown.rawValue)
+        let sysDefined = CGEventMask(1 << 14) // NX_SYSDEFINED
+        let keyEvents = CGEventMask(1 << CGEventType.keyDown.rawValue)
             | CGEventMask(1 << CGEventType.keyUp.rawValue)
+        if let t = makeTap(mask: sysDefined | keyEvents) {
+            install(t)
+            capturesKeyEvents = true
+            return true
+        }
+        if let t = makeTap(mask: sysDefined) {
+            install(t)
+            capturesKeyEvents = false
+            return true
+        }
+        return false
+    }
+
+    private func makeTap(mask: CGEventMask) -> CFMachPort? {
         let refcon = Unmanaged.passUnretained(self).toOpaque()
-        guard let tap = CGEvent.tapCreate(
+        return CGEvent.tapCreate(
             tap: .cgSessionEventTap,
             place: .headInsertEventTap,
             options: .defaultTap,
@@ -54,17 +73,19 @@ final class MediaKeyTap {
                 return me.handle(type: type, event: event)
             },
             userInfo: refcon
-        ) else { return false }
+        )
+    }
 
+    private func install(_ tap: CFMachPort) {
         self.tap = tap
         let src = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         source = src
         CFRunLoopAddSource(CFRunLoopGetMain(), src, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
-        return true
     }
 
     func stop() {
+        capturesKeyEvents = false
         if let tap { CGEvent.tapEnable(tap: tap, enable: false) }
         if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
         tap = nil

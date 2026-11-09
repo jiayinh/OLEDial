@@ -103,21 +103,7 @@ struct KeyboardSettings: View {
                         Text(mode.title).tag(mode)
                     }
                 }
-                if tv.mediaKeyMode != .off {
-                    if tv.accessibilityTrusted {
-                        Label("Keyboard keys active", systemImage: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                    } else {
-                        HStack(alignment: .top) {
-                            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
-                            Text("Needs Accessibility permission to read the volume and brightness keys. After granting it in System Settings, come back here.")
-                                .fixedSize(horizontal: false, vertical: true)
-                            Spacer()
-                            Button("Grant Access…") { tv.requestAccessibility() }
-                                .glassButton(prominent: true)
-                        }
-                    }
-                }
+                MediaKeyStatusView()
                 Stepper("Volume step: \(tv.volumeStep)", value: $tv.volumeStep, in: 1...10)
                 Stepper("Brightness step: \(tv.brightnessStepSize)", value: $tv.brightnessStepSize, in: 1...20)
             } header: {
@@ -147,6 +133,43 @@ struct KeyboardSettings: View {
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+/// Explains whether the keyboard keys are working and how to fix it if not.
+struct MediaKeyStatusView: View {
+    @EnvironmentObject var tv: TVController
+
+    var body: some View {
+        switch tv.mediaKeyStatus {
+        case .off:
+            EmptyView()
+        case .active:
+            Label("Volume and brightness keys active", systemImage: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+        case .volumeOnly:
+            problem(
+                "Volume keys active. On some Apple keyboards the brightness keys need Input Monitoring: enable OLEDial in Privacy & Security › Input Monitoring, then come back here.",
+                button: "Open Input Monitoring") { tv.openPrivacySettings("Privacy_ListenEvent") }
+        case .needsPermission:
+            problem(
+                "Needs Accessibility permission to read the volume and brightness keys.",
+                button: "Grant Access…", prominent: true) { tv.requestAccessibility() }
+        case .blocked:
+            problem(
+                "macOS shows OLEDial as allowed, but rejected the keyboard listener. This happens after installing a new build. In Privacy & Security › Accessibility, select OLEDial, click − to remove it, then add it again (or relaunch OLEDial and click Grant Access).",
+                button: "Open Accessibility") { tv.openPrivacySettings("Privacy_Accessibility") }
+        }
+    }
+
+    private func problem(_ text: String, button: String, prominent: Bool = false,
+                         action: @escaping () -> Void) -> some View {
+        HStack(alignment: .top) {
+            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+            Text(text).fixedSize(horizontal: false, vertical: true)
+            Spacer()
+            Button(button, action: action).glassButton(prominent: prominent)
+        }
     }
 }
 

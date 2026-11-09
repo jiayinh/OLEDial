@@ -12,6 +12,17 @@ struct MenuView: View {
             } else {
                 connectCard
             }
+            if tv.mediaKeyStatus == .needsPermission || tv.mediaKeyStatus == .blocked {
+                Button {
+                    SettingsWindowController.shared.show(tv: tv)
+                } label: {
+                    Label("Keyboard keys aren't working. Open Settings to fix", systemImage: "keyboard.badge.exclamationmark")
+                        .font(.caption)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.orange)
+            }
             if let err = tv.lastError {
                 Text(err)
                     .font(.caption)
