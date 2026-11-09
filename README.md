@@ -62,3 +62,9 @@ Starting with **v1.0.1**, every release is signed with the same certificate, so 
 - **Can't connect while the TV is off:** on the TV, turn on *TV On With Mobile* / *Wake on LAN* (usually Settings › General › Devices › External Devices; the path varies by model).
 - **Brightness slider missing:** some picture modes and Energy Saving settings lock OLED brightness. This varies by model and firmware.
 - **Volume does nothing:** if the TV's sound goes to a soundbar over optical, or over ARC without CEC volume control, the TV can't control the volume.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
+
+OLEDial is an independent project and is not affiliated with or endorsed by LG Electronics.
