@@ -104,17 +104,6 @@ struct KeyboardSettings: View {
                     }
                 }
                 MediaKeyStatusView()
-                Toggle(isOn: $tv.volumeKeysFollowOutput) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Volume keys follow the Mac's sound output")
-                        Text("When sound plays through a USB speaker or dock (for example Microsoft Audio Dock), its buttons and the keyboard's volume keys change that device instead of the TV.")
-                            .font(.caption).foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                if tv.volumeKeysFollowOutput {
-                    OutputStatusRow()
-                }
                 Toggle(isOn: $tv.speakerButtonsControlSpeaker) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Speaker and dock buttons control their own volume")
@@ -143,6 +132,17 @@ struct KeyboardSettings: View {
                                 .glassButton()
                         }
                     }
+                }
+                Toggle(isOn: $tv.volumeKeysFollowOutput) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Keyboard volume keys control the TV only when the Mac's sound goes to the TV")
+                        Text("If the Mac's sound is switched to AirPods, headphones or a dock, the keyboard's volume keys change that device instead. Turn this off if you want them to always control the TV, for example while the TV plays from its own apps.")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                if tv.volumeKeysFollowOutput {
+                    OutputStatusRow()
                 }
                 Stepper("Volume step: \(tv.volumeStep)", value: $tv.volumeStep, in: 1...10)
                 Stepper("Brightness step: \(tv.brightnessStepSize)", value: $tv.brightnessStepSize, in: 1...20)
@@ -187,7 +187,7 @@ struct OutputStatusRow: View {
         LabeledContent("Current output") {
             VStack(alignment: .trailing, spacing: 2) {
                 Text(output?.name ?? "Unknown")
-                Text(toTV ? "Volume keys → TV" : "Volume keys → this device")
+                Text(toTV ? "Keyboard volume keys → TV" : "Keyboard volume keys → this device")
                     .font(.caption)
                     .foregroundStyle(toTV ? Color.accentColor : Color.secondary)
             }

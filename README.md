@@ -59,6 +59,7 @@ Starting with **v1.0.1**, every release is signed with the same certificate, so 
 
 - **Media keys stopped working after an update:** Settings › Keyboard shows what is wrong. Usually the fix is to remove OLEDial from Accessibility and add it again (see [Updating](#updating)).
 - **A USB speaker or dock's volume buttons change the TV:** turn on *Speaker and dock buttons control their own volume* in Settings › Keyboard and grant **Input Monitoring**. The dock's buttons then change the dock's volume (for example during a call), while the keyboard's volume keys keep controlling the TV. Settings shows the last button pressed so you can check it.
+- **Keyboard volume keys change the TV while you're on AirPods or headphones:** turn on *Keyboard volume keys control the TV only when the Mac's sound goes to the TV* in Settings › Keyboard (on by default).
 - **Keys still change the Mac's volume:** check that Accessibility is granted, the right TV display is selected, and the pointer is on the TV's screen.
 - **Can't connect while the TV is off:** on the TV, turn on *TV On With Mobile* / *Wake on LAN* (usually Settings › General › Devices › External Devices; the path varies by model).
 - **Brightness slider missing:** some picture modes and Energy Saving settings lock OLED brightness. This varies by model and firmware.
