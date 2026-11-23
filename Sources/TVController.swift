@@ -60,6 +60,11 @@ final class TVController: ObservableObject {
     @Published var brightnessStepSize: Int {
         didSet { defaults.set(brightnessStepSize, forKey: Keys.brightnessStep) }
     }
+    /// Volume keys go to the TV only when the Mac can't change its own output volume
+    /// (e.g. sound goes to the TV over HDMI). Lets a USB speaker/dock keep its own volume.
+    @Published var volumeKeysFollowOutput: Bool {
+        didSet { defaults.set(volumeKeysFollowOutput, forKey: Keys.volumeFollowsOutput) }
+    }
     @Published var showHUD: Bool {
         didSet { defaults.set(showHUD, forKey: Keys.showHUD) }
     }
@@ -93,6 +98,7 @@ final class TVController: ObservableObject {
         static let volumeStep = "volumeStep"
         static let brightnessStep = "brightnessStep"
         static let showHUD = "showHUD"
+        static let volumeFollowsOutput = "volumeKeysFollowOutput"
         static func clientKey(_ host: String) -> String { "clientKey.\(host)" }
     }
 
@@ -104,6 +110,7 @@ final class TVController: ObservableObject {
         volumeStep = d.object(forKey: Keys.volumeStep) as? Int ?? 2
         brightnessStepSize = d.object(forKey: Keys.brightnessStep) as? Int ?? 5
         showHUD = d.object(forKey: Keys.showHUD) as? Bool ?? true
+        volumeKeysFollowOutput = d.object(forKey: Keys.volumeFollowsOutput) as? Bool ?? true
         launchAtLogin = SMAppService.mainApp.status == .enabled
         shortcuts = Self.loadShortcuts()
 
@@ -448,6 +455,8 @@ final class TVController: ObservableObject {
     private func shouldInterceptMediaKey(_ key: MediaKey) -> Bool {
         guard isConnected else { return false }
         if key == .brightnessUp || key == .brightnessDown, !brightnessAvailable { return false }
+        if key == .soundUp || key == .soundDown || key == .mute, volumeKeysFollowOutput,
+           !volumeKeysTargetTV() { return false }
         switch mediaKeyMode {
         case .off: return false
         case .always: return true
@@ -455,6 +464,15 @@ final class TVController: ObservableObject {
             guard let tv = tvScreen(), let mouse = mouseScreen() else { return false }
             return Self.displayID(tv) == Self.displayID(mouse)
         }
+    }
+
+    /// With "follow output" on: the TV gets the volume keys only if the Mac's current sound
+    /// output is display audio (HDMI/DisplayPort) or a device whose volume macOS can't set.
+    /// Note: macOS doesn't say which device a volume key came from, so a USB dock's buttons and
+    /// the keyboard's keys always behave the same way.
+    func volumeKeysTargetTV() -> Bool {
+        guard let output = AudioOutput.current() else { return true }
+        return output.isDisplayAudio || !output.canSetVolume
     }
 
     func updateMediaKeyTap() {

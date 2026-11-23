@@ -104,6 +104,17 @@ struct KeyboardSettings: View {
                     }
                 }
                 MediaKeyStatusView()
+                Toggle(isOn: $tv.volumeKeysFollowOutput) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Volume keys follow the Mac's sound output")
+                        Text("When sound plays through a USB speaker or dock (for example Microsoft Audio Dock), its buttons and the keyboard's volume keys change that device instead of the TV.")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                if tv.volumeKeysFollowOutput {
+                    OutputStatusRow()
+                }
                 Stepper("Volume step: \(tv.volumeStep)", value: $tv.volumeStep, in: 1...10)
                 Stepper("Brightness step: \(tv.brightnessStepSize)", value: $tv.brightnessStepSize, in: 1...20)
             } header: {
@@ -133,6 +144,32 @@ struct KeyboardSettings: View {
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+/// Shows the current sound output and where the volume keys go right now.
+struct OutputStatusRow: View {
+    @EnvironmentObject var tv: TVController
+    @State private var output: AudioOutput.Device?
+    @State private var toTV = false
+    private let timer = Timer.publish(every: 2, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        LabeledContent("Current output") {
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(output?.name ?? "Unknown")
+                Text(toTV ? "Volume keys → TV" : "Volume keys → this device")
+                    .font(.caption)
+                    .foregroundStyle(toTV ? Color.accentColor : Color.secondary)
+            }
+        }
+        .onAppear(perform: refresh)
+        .onReceive(timer) { _ in refresh() }
+    }
+
+    private func refresh() {
+        output = AudioOutput.current()
+        toTV = tv.volumeKeysTargetTV()
     }
 }
 
