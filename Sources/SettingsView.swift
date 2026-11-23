@@ -115,6 +115,35 @@ struct KeyboardSettings: View {
                 if tv.volumeKeysFollowOutput {
                     OutputStatusRow()
                 }
+                Toggle(isOn: $tv.speakerButtonsControlSpeaker) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Speaker and dock buttons control their own volume")
+                        Text("For example, Microsoft Audio Dock's buttons change the dock's volume during a call, while the keyboard's volume keys keep controlling the TV.")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                if tv.speakerButtonsControlSpeaker {
+                    if tv.inputMonitoringGranted {
+                        LabeledContent("Last volume button") {
+                            Text(tv.lastVolumeButton.isEmpty ? "Press a button on your speaker to test" : tv.lastVolumeButton)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.trailing)
+                        }
+                    } else {
+                        HStack(alignment: .top) {
+                            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                            Text("Needs Input Monitoring permission to tell which device a volume button came from.")
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer()
+                            Button("Grant Access…") { tv.requestInputMonitoring() }
+                                .glassButton(prominent: true)
+                            Button("Open Settings") { tv.openPrivacySettings("Privacy_ListenEvent") }
+                                .glassButton()
+                        }
+                    }
+                }
                 Stepper("Volume step: \(tv.volumeStep)", value: $tv.volumeStep, in: 1...10)
                 Stepper("Brightness step: \(tv.brightnessStepSize)", value: $tv.brightnessStepSize, in: 1...20)
             } header: {

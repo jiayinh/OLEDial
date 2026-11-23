@@ -65,6 +65,13 @@ final class TVController: ObservableObject {
     @Published var volumeKeysFollowOutput: Bool {
         didSet { defaults.set(volumeKeysFollowOutput, forKey: Keys.volumeFollowsOutput) }
     }
+    /// A USB speaker/dock's own volume buttons change that speaker (needs Input Monitoring),
+    /// while the keyboard's volume keys keep controlling the TV.
+    @Published var speakerButtonsControlSpeaker: Bool {
+        didSet { defaults.set(speakerButtonsControlSpeaker, forKey: Keys.speakerButtons); updateHIDWatcher() }
+    }
+    @Published private(set) var inputMonitoringGranted = HIDVolumeWatcher.accessGranted
+    @Published private(set) var lastVolumeButton: String = ""
     @Published var showHUD: Bool {
         didSet { defaults.set(showHUD, forKey: Keys.showHUD) }
     }
@@ -81,6 +88,10 @@ final class TVController: ObservableObject {
     private var mediaKeyRetryTask: Task<Void, Never>?
     private var userWantsConnection = false
     private let mediaKeys = MediaKeyTap()
+    private let hidWatcher = HIDVolumeWatcher()
+    private var hidRetryTask: Task<Void, Never>?
+    /// Where an intercepted volume key-down goes: a speaker's own volume, or the TV.
+    private var speakerForKey: [MediaKey: AudioOutput.Device] = [:]
 
     // Latest-value-wins coalescing so dragging a slider doesn't flood the TV.
     private var volumeTarget: Int?
@@ -99,6 +110,7 @@ final class TVController: ObservableObject {
         static let brightnessStep = "brightnessStep"
         static let showHUD = "showHUD"
         static let volumeFollowsOutput = "volumeKeysFollowOutput"
+        static let speakerButtons = "speakerButtonsControlSpeaker"
         static func clientKey(_ host: String) -> String { "clientKey.\(host)" }
     }
 
@@ -111,11 +123,13 @@ final class TVController: ObservableObject {
         brightnessStepSize = d.object(forKey: Keys.brightnessStep) as? Int ?? 5
         showHUD = d.object(forKey: Keys.showHUD) as? Bool ?? true
         volumeKeysFollowOutput = d.object(forKey: Keys.volumeFollowsOutput) as? Bool ?? true
+        speakerButtonsControlSpeaker = d.object(forKey: Keys.speakerButtons) as? Bool ?? true
         launchAtLogin = SMAppService.mainApp.status == .enabled
         shortcuts = Self.loadShortcuts()
 
         registerHotkeys()
         setUpMediaKeys()
+        setUpHIDWatcher()
 
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
@@ -440,6 +454,10 @@ final class TVController: ObservableObject {
                 // ⌥⇧ + key = fine step of 1, like macOS.
                 let fine = flags.contains(.option) && flags.contains(.shift)
                 let screen = self.mouseScreen()
+                if let speaker = self.speakerForKey[key] {
+                    self.adjustSpeaker(speaker, key: key, fine: fine, hudScreen: screen)
+                    return
+                }
                 switch key {
                 case .soundUp: self.perform(.volumeUp, fine: fine, hudScreen: screen)
                 case .soundDown: self.perform(.volumeDown, fine: fine, hudScreen: screen)
@@ -453,10 +471,20 @@ final class TVController: ObservableObject {
     }
 
     private func shouldInterceptMediaKey(_ key: MediaKey) -> Bool {
-        guard isConnected else { return false }
         if key == .brightnessUp || key == .brightnessDown, !brightnessAvailable { return false }
-        if key == .soundUp || key == .soundDown || key == .mute, volumeKeysFollowOutput,
-           !volumeKeysTargetTV() { return false }
+        let isVolumeKey = key == .soundUp || key == .soundDown || key == .mute
+        if isVolumeKey {
+            speakerForKey[key] = nil
+            // A speaker/dock's own button was just pressed: adjust that speaker, not the TV.
+            if speakerButtonsControlSpeaker, hidWatcher.isRunning,
+               let press = hidWatcher.takeRecentPress(),
+               let speaker = AudioOutput.speaker(matchingHIDName: press.deviceName) {
+                speakerForKey[key] = speaker
+                return true
+            }
+        }
+        guard isConnected else { return false }
+        if isVolumeKey, volumeKeysFollowOutput, !volumeKeysTargetTV() { return false }
         switch mediaKeyMode {
         case .off: return false
         case .always: return true
@@ -464,6 +492,79 @@ final class TVController: ObservableObject {
             guard let tv = tvScreen(), let mouse = mouseScreen() else { return false }
             return Self.displayID(tv) == Self.displayID(mouse)
         }
+    }
+
+    // MARK: - Speaker / dock volume buttons
+
+    private func setUpHIDWatcher() {
+        hidWatcher.onPress = { [weak self] press in
+            guard let self else { return }
+            MainActor.assumeIsolated {
+                let target = AudioOutput.speaker(matchingHIDName: press.deviceName)
+                self.lastVolumeButton = target == nil
+                    ? "\(press.deviceName) → TV / Mac (not a speaker)"
+                    : "\(press.deviceName) → its own speaker"
+            }
+        }
+        updateHIDWatcher()
+    }
+
+    func updateHIDWatcher() {
+        inputMonitoringGranted = HIDVolumeWatcher.accessGranted
+        guard speakerButtonsControlSpeaker else {
+            hidWatcher.stop()
+            hidRetryTask?.cancel()
+            hidRetryTask = nil
+            return
+        }
+        if !hidWatcher.start() { startHIDRetry() }
+    }
+
+    func requestInputMonitoring() {
+        HIDVolumeWatcher.requestAccess()
+        startHIDRetry()
+    }
+
+    private func startHIDRetry() {
+        guard hidRetryTask == nil else { return }
+        hidRetryTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                guard let self else { return }
+                self.inputMonitoringGranted = HIDVolumeWatcher.accessGranted
+                if !self.speakerButtonsControlSpeaker || self.hidWatcher.start() { break }
+            }
+            self?.hidRetryTask = nil
+        }
+    }
+
+    /// Changes a speaker's own volume in macOS-style steps (1/16, or 1/64 with ⌥⇧).
+    private func adjustSpeaker(_ speaker: AudioOutput.Device, key: MediaKey, fine: Bool, hudScreen: NSScreen?) {
+        let step: Float = fine ? 1.0 / 64.0 : 1.0 / 16.0
+        var muted = AudioOutput.isMuted(speaker.id)
+        var level = AudioOutput.volume(of: speaker.id) ?? 0
+        switch key {
+        case .mute:
+            if AudioOutput.setMuted(!muted, of: speaker.id) { muted.toggle() }
+        case .soundUp:
+            if muted, AudioOutput.setMuted(false, of: speaker.id) { muted = false }
+            level = min(1, level + step)
+            AudioOutput.setVolume(level, of: speaker.id)
+        case .soundDown:
+            level = max(0, level - step)
+            AudioOutput.setVolume(level, of: speaker.id)
+        default:
+            return
+        }
+        guard showHUD else { return }
+        let percent = Double((level * 100).rounded())
+        let symbol: String
+        if muted || percent == 0 { symbol = "speaker.slash.fill" }
+        else if percent < 34 { symbol = "speaker.wave.1.fill" }
+        else if percent < 67 { symbol = "speaker.wave.2.fill" }
+        else { symbol = "speaker.wave.3.fill" }
+        HUDController.shared.show(symbol: symbol, title: speaker.name, value: percent, muted: muted,
+                                  on: hudScreen ?? NSScreen.main)
     }
 
     /// With "follow output" on: the TV gets the volume keys only if the Mac's current sound

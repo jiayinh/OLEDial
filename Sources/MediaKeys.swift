@@ -17,12 +17,23 @@ enum MediaKey: Int {
 /// Intercepts media keys with a CGEventTap (same approach as MonitorControl's MediaKeyTap).
 /// Requires Accessibility permission. The tap is installed on the main run loop.
 final class MediaKeyTap {
-    /// Asked synchronously on the main thread: should this key go to the TV (and be swallowed)?
+    /// Asked synchronously on the main thread on key-down: should this key be handled by
+    /// OLEDial (and swallowed)? The matching key-up follows the key-down's decision.
     var shouldIntercept: ((MediaKey) -> Bool)?
     /// Called on key-down (including auto-repeat) for intercepted keys.
     var onKey: ((MediaKey, NSEvent.ModifierFlags) -> Void)?
 
     private var tap: CFMachPort?
+    private var interceptedKeys = Set<MediaKey>()
+
+    private func decide(_ key: MediaKey, isDown: Bool) -> Bool {
+        if isDown {
+            let intercept = MainActor.assumeIsolated { shouldIntercept?(key) ?? false }
+            if intercept { interceptedKeys.insert(key) } else { interceptedKeys.remove(key) }
+            return intercept
+        }
+        return interceptedKeys.remove(key) != nil
+    }
     private var source: CFRunLoopSource?
 
     var isRunning: Bool { tap != nil }
@@ -106,8 +117,7 @@ final class MediaKeyTap {
             case 145: key = .brightnessDown
             default: return Unmanaged.passUnretained(event)
             }
-            let intercept = MainActor.assumeIsolated { shouldIntercept?(key) ?? false }
-            guard intercept else { return Unmanaged.passUnretained(event) }
+            guard decide(key, isDown: type == .keyDown) else { return Unmanaged.passUnretained(event) }
             if type == .keyDown {
                 let flags = NSEvent(cgEvent: event)?.modifierFlags ?? []
                 MainActor.assumeIsolated { onKey?(key, flags) }
@@ -127,8 +137,7 @@ final class MediaKeyTap {
 
         guard let key = MediaKey(rawValue: keyCode) else { return Unmanaged.passUnretained(event) }
 
-        let intercept = MainActor.assumeIsolated { shouldIntercept?(key) ?? false }
-        guard intercept else { return Unmanaged.passUnretained(event) }
+        guard decide(key, isDown: isDown) else { return Unmanaged.passUnretained(event) }
 
         if isDown {
             let flags = ns.modifierFlags
